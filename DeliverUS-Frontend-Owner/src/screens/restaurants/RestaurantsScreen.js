@@ -2,7 +2,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { StyleSheet, FlatList, Pressable, View } from 'react-native'
 
-import { getAll, remove } from '../../api/RestaurantEndpoints'
+import { getAll, remove, changeSort } from '../../api/RestaurantEndpoints'
 import ImageCard from '../../components/ImageCard'
 import TextSemiBold from '../../components/TextSemibold'
 import TextRegular from '../../components/TextRegular'
@@ -16,6 +16,7 @@ import restaurantLogo from '../../../assets/restaurantLogo.jpeg'
 export default function RestaurantsScreen ({ navigation, route }) {
   const [restaurants, setRestaurants] = useState([])
   const [restaurantToBeDeleted, setRestaurantToBeDeleted] = useState(null)
+  const [restaurantToBeOrdenado, setRestaurantToBeOrdenado] = useState(null)
   const { loggedInUser } = useContext(AuthorizationContext)
 
   useEffect(() => {
@@ -38,6 +39,12 @@ export default function RestaurantsScreen ({ navigation, route }) {
         <TextRegular numberOfLines={2}>{item.description}</TextRegular>
         {item.averageServiceMinutes !== null &&
           <TextSemiBold>Avg. service time: <TextSemiBold textStyle={{ color: GlobalStyles.brandPrimary }}>{item.averageServiceMinutes} min.</TextSemiBold></TextSemiBold>
+        }
+        {item.orderDefault &&
+          <TextRegular>Ordenado por precio</TextRegular>
+        }
+        {!item.orderDefault &&
+          <TextRegular>Ordenado por defecto</TextRegular>
         }
         <TextSemiBold>Shipping: <TextSemiBold textStyle={{ color: GlobalStyles.brandPrimary }}>{item.shippingCosts.toFixed(2)}€</TextSemiBold></TextSemiBold>
         <View style={styles.actionButtonsContainer}>
@@ -77,7 +84,26 @@ export default function RestaurantsScreen ({ navigation, route }) {
             </TextRegular>
           </View>
         </Pressable>
+
+            <Pressable
+            onPress={() => { cambiarOrdenRestaurante(item) }}
+            style={({ pressed }) => [
+              {
+                backgroundColor: pressed
+                  ? GlobalStyles.brandGreenTap
+                  : GlobalStyles.brandGreen
+              },
+              styles.actionButton
+            ]}>
+          <View style={[{ flex: 1, flexDirection: 'row', justifyContent: 'center' }]}>
+            <MaterialCommunityIcons name='sort' color={'white'} size={20}/>
+            {item.orderDefault && (<TextRegular textStyle={styles.text}> Sort by: default </TextRegular>)}
+            {!item.orderDefault && (<TextRegular textStyle={styles.text}> Sort by: price </TextRegular>)}
+          </View>
+        </Pressable>
+
         </View>
+
       </ImageCard>
     )
   }
@@ -88,6 +114,29 @@ export default function RestaurantsScreen ({ navigation, route }) {
         No restaurants were retreived. Are you logged in?
       </TextRegular>
     )
+  }
+
+  const cambiarOrdenRestaurante = async (restaurant) => {
+    try {
+      await changeSort(restaurant.id)
+      await fetchRestaurants()
+      setRestaurantToBeOrdenado(null)
+      showMessage({
+        message: `Restaurante ${restaurant.name} exitosamente ha cambiado el orden`,
+        type: 'success',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
+    } catch (error) {
+      console.log(error)
+      setRestaurantToBeOrdenado(null)
+      showMessage({
+        message: `Restaurante ${restaurant.name} no ha cambiado el orden`,
+        type: 'error',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
+    }
   }
 
   const renderHeader = () => {
@@ -195,7 +244,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignSelf: 'center',
     flexDirection: 'column',
-    width: '50%'
+    width: '33%'
   },
   actionButtonsContainer: {
     flexDirection: 'row',
